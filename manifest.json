@@ -1,0 +1,38 @@
+{
+  "name": "บันทึกแคลลอรี่",
+  "short_name": "แคลลอรี่",
+  "description": "บันทึกแคลลอรี่และการออกกำลังกายประจำวัน",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F7F6F3",
+  "theme_color": "#2D6A4F",
+  "orientation": "portrait-primary",
+  "lang": "th",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "fitness", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "บันทึกอาหาร",
+      "url": "./index.html#food",
+      "description": "เพิ่มรายการอาหาร"
+    },
+    {
+      "name": "บันทึกออกกำลังกาย",
+      "url": "./index.html#exercise",
+      "description": "เพิ่มกิจกรรม"
+    }
+  ]
+}

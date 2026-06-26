@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="แคลลอรี่" />
+<meta name="theme-color" content="#2D6A4F" />
+<meta name="description" content="บันทึกแคลลอรี่และการออกกำลังกายประจำวัน" />
+<link rel="manifest" href="manifest.json" />
+<!-- Apple Touch Icons (inline SVG-based, no external file needed) -->
+<link rel="apple-touch-icon" href="icon-192.png" />
+<title>บันทึกแคลลอรี่</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F7F6F3; --surface: #FFFFFF; --surface2: #F0EEE9;
+  --border: rgba(0,0,0,0.08); --border-strong: rgba(0,0,0,0.15);
+  --text: #1A1917; --text-muted: #6B6860; --text-faint: #9C9A94;
+  --green: #2D6A4F; --green-light: #E8F4EE;
+  --red: #9B2335; --red-light: #FAEAEC;
+  --amber: #7A4F00; --amber-light: #FDF3E0;
+  --accent: #2D6A4F; --radius: 12px; --radius-sm: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:#141412; --surface:#1E1D1B; --surface2:#2A2926;
+    --border:rgba(255,255,255,0.08); --border-strong:rgba(255,255,255,0.15);
+    --text:#F0EEE9; --text-muted:#9C9A94; --text-faint:#6B6860;
+    --green:#52B788; --green-light:#0F2D1F;
+    --red:#E07B8A; --red-light:#2D0F16;
+    --amber:#F4A845; --amber-light:#2D1F00;
+  }
+}
+html { font-size:16px; }
+body { font-family:'Sarabun',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; line-height:1.6; }
+.app-shell { max-width:600px; margin:0 auto; padding:0 0 6rem; }
+
+.header { background:var(--surface); border-bottom:1px solid var(--border); padding:1.25rem 1.5rem 1rem; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+.app-name { font-size:13px; font-weight:500; color:var(--text-faint); letter-spacing:0.08em; text-transform:uppercase; }
+.date-nav { display:flex; align-items:center; gap:8px; }
+.date-btn { width:32px; height:32px; border:1px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); color:var(--text-muted); cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; }
+.date-btn:hover { background:var(--surface2); }
+.date-display { font-size:17px; font-weight:600; color:var(--text); cursor:pointer; padding:4px 8px; border-radius:var(--radius-sm); }
+.date-display:hover { background:var(--surface2); }
+#date-picker-hidden { position:absolute; opacity:0; pointer-events:none; width:0; height:0; }
+
+.summary { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding:1rem 1.5rem; }
+.summary-card { background:var(--surface2); border-radius:var(--radius-sm); padding:0.75rem; text-align:center; }
+.summary-label { font-size:11px; color:var(--text-faint); font-weight:500; letter-spacing:0.05em; text-transform:uppercase; display:block; margin-bottom:4px; }
+.summary-value { font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:500; color:var(--text); display:block; line-height:1.2; }
+.summary-unit { font-size:11px; color:var(--text-faint); display:block; margin-top:2px; }
+.summary-card.balance-surplus .summary-value { color:var(--red); }
+.summary-card.balance-deficit .summary-value { color:var(--green); }
+.balance-tag { display:inline-block; font-size:11px; font-weight:500; padding:2px 8px; border-radius:999px; margin-top:4px; }
+.tag-surplus { background:var(--red-light); color:var(--red); }
+.tag-deficit { background:var(--green-light); color:var(--green); }
+.tag-balanced { background:var(--surface); color:var(--text-faint); border:1px solid var(--border); }
+
+.tabs { display:flex; background:var(--surface); border-bottom:1px solid var(--border); padding:0 1.5rem; }
+.tab-btn { flex:1; padding:0.75rem 0; border:none; background:none; font-family:'Sarabun',sans-serif; font-size:14px; font-weight:500; color:var(--text-muted); cursor:pointer; border-bottom:2px solid transparent; position:relative; bottom:-1px; }
+.tab-btn.active { color:var(--accent); border-bottom:2px solid var(--accent); }
+
+.panel { display:none; padding:1.25rem 1.5rem; }
+.panel.active { display:block; }
+
+.add-form { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1rem; margin-bottom:1rem; }
+.form-title { font-size:13px; font-weight:500; color:var(--text-muted); margin-bottom:0.75rem; }
+
+.ai-row { display:flex; gap:8px; margin-bottom:10px; }
+.ai-input-wrap { flex:1; position:relative; }
+.ai-input-wrap input { width:100%; padding-right:10px; }
+.ai-lookup-btn { height:38px; padding:0 14px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); font-family:'Sarabun',sans-serif; font-size:13px; font-weight:500; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:opacity 0.15s; }
+.ai-lookup-btn:hover { opacity:0.85; }
+.ai-lookup-btn:disabled { opacity:0.5; cursor:default; }
+
+.kcal-row { display:flex; gap:8px; align-items:flex-end; margin-bottom:10px; }
+.kcal-row .field-wrap { flex:1; }
+.field-wrap label { display:block; font-size:12px; color:var(--text-faint); margin-bottom:4px; }
+
+input[type="text"], input[type="number"] {
+  width:100%; height:38px; padding:0 10px;
+  border:1px solid var(--border-strong); border-radius:var(--radius-sm);
+  background:var(--bg); color:var(--text);
+  font-family:'Sarabun',sans-serif; font-size:14px; outline:none; transition:border-color 0.15s;
+}
+input[type="text"]:focus, input[type="number"]:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(45,106,79,0.12); }
+
+.ai-result-card { background:var(--amber-light); border:1px solid rgba(122,79,0,0.2); border-radius:var(--radius-sm); padding:0.75rem 1rem; margin-bottom:10px; display:none; }
+.ai-result-card.show { display:block; }
+.ai-result-name { font-size:14px; font-weight:500; color:var(--amber); margin-bottom:4px; }
+.ai-result-kcal { font-family:'IBM Plex Mono',monospace; font-size:24px; font-weight:500; color:var(--amber); }
+.ai-result-unit { font-size:12px; color:var(--text-faint); margin-left:4px; }
+.ai-result-note { font-size:12px; color:var(--text-muted); margin-top:4px; line-height:1.5; }
+.ai-use-btn { margin-top:8px; padding:5px 14px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); font-family:'Sarabun',sans-serif; font-size:13px; cursor:pointer; }
+.ai-use-btn:hover { opacity:0.85; }
+
+.ai-loading { display:none; align-items:center; gap:8px; padding:0.6rem 0; color:var(--text-muted); font-size:13px; }
+.ai-loading.show { display:flex; }
+.spinner { width:16px; height:16px; border:2px solid var(--border-strong); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.add-btn { width:100%; height:38px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); font-family:'Sarabun',sans-serif; font-size:14px; font-weight:500; cursor:pointer; }
+.add-btn:hover { opacity:0.88; }
+
+.log-section-title { font-size:12px; font-weight:500; color:var(--text-faint); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:0.5rem; }
+.log-list { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.log-item { display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; border-bottom:1px solid var(--border); }
+.log-item:last-child { border-bottom:none; }
+.log-item:hover { background:var(--surface2); }
+.log-name { font-size:14px; color:var(--text); }
+.log-right { display:flex; align-items:center; gap:10px; }
+.log-kcal { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:500; color:var(--text-muted); }
+.del-btn { width:28px; height:28px; border:none; background:none; cursor:pointer; color:var(--text-faint); border-radius:var(--radius-sm); font-size:15px; display:flex; align-items:center; justify-content:center; }
+.del-btn:hover { color:var(--red); background:var(--red-light); }
+.log-empty { padding:2rem 1rem; text-align:center; color:var(--text-faint); font-size:14px; }
+
+.history-chart-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1rem; margin-bottom:1rem; }
+.chart-title { font-size:13px; font-weight:500; color:var(--text-muted); margin-bottom:0.75rem; }
+.chart-legend { display:flex; gap:16px; margin-bottom:10px; font-size:12px; color:var(--text-muted); }
+.legend-dot { width:10px; height:10px; border-radius:2px; display:inline-block; margin-right:5px; vertical-align:middle; }
+.history-items { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.history-row { display:flex; justify-content:space-between; align-items:center; padding:0.875rem 1rem; border-bottom:1px solid var(--border); cursor:pointer; }
+.history-row:last-child { border-bottom:none; }
+.history-row:hover { background:var(--surface2); }
+.history-row.today-row { background:var(--green-light); }
+.history-date { font-size:14px; font-weight:500; color:var(--text); }
+.history-sub { font-size:12px; color:var(--text-faint); font-family:'IBM Plex Mono',monospace; margin-top:2px; }
+.badge { font-size:12px; font-weight:500; padding:3px 10px; border-radius:999px; }
+.badge-surplus { background:var(--red-light); color:var(--red); }
+.badge-deficit { background:var(--green-light); color:var(--green); }
+.badge-balanced { background:var(--surface2); color:var(--text-faint); }
+.stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:1rem; }
+.stat-box { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1rem; text-align:center; }
+.stat-num { font-family:'IBM Plex Mono',monospace; font-size:28px; font-weight:500; color:var(--text); }
+.stat-lbl { font-size:12px; color:var(--text-faint); margin-top:4px; }
+
+/* Goals section */
+.goals-bar { background:var(--surface); border-bottom:1px solid var(--border); padding:0.75rem 1.5rem; }
+.goals-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; }
+.goals-title { font-size:12px; font-weight:500; color:var(--text-faint); letter-spacing:0.06em; text-transform:uppercase; }
+.goals-edit-btn { font-size:12px; color:var(--accent); background:none; border:none; cursor:pointer; padding:2px 6px; border-radius:4px; }
+.goals-edit-btn:hover { background:var(--green-light); }
+.goals-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.goal-item { background:var(--surface2); border-radius:var(--radius-sm); padding:0.6rem 0.75rem; }
+.goal-item-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.goal-item-label { font-size:11px; color:var(--text-faint); }
+.goal-item-nums { font-size:11px; font-family:'IBM Plex Mono',monospace; color:var(--text-muted); }
+.progress-track { height:6px; background:var(--border-strong); border-radius:999px; overflow:hidden; }
+.progress-fill { height:100%; border-radius:999px; transition:width 0.4s ease; }
+.progress-fill.food-fill { background:var(--accent); }
+.progress-fill.ex-fill { background:#e07b8a; }
+.progress-fill.over { background:var(--red); }
+
+/* Day result banner */
+.day-result { margin:0 1.5rem 0; border-radius:var(--radius); padding:0.875rem 1rem; display:flex; align-items:flex-start; gap:10px; }
+.day-result.hidden { display:none; }
+.day-result.success { background:var(--green-light); border:1px solid rgba(45,106,79,0.2); }
+.day-result.warning { background:var(--red-light); border:1px solid rgba(155,35,53,0.2); }
+.day-result.neutral { background:var(--amber-light); border:1px solid rgba(122,79,0,0.2); }
+.day-result-icon { font-size:20px; flex-shrink:0; line-height:1; margin-top:1px; }
+.day-result-text { flex:1; }
+.day-result-title { font-size:14px; font-weight:600; color:var(--text); margin-bottom:2px; }
+.day-result-sub { font-size:12px; color:var(--text-muted); line-height:1.5; }
+
+/* Goal edit modal */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:200; display:flex; align-items:center; justify-content:center; padding:1rem; }
+.modal-overlay.hidden { display:none; }
+.modal { background:var(--surface); border-radius:var(--radius); padding:1.5rem; width:100%; max-width:420px; border:1px solid var(--border-strong); }
+.modal h3 { font-size:16px; font-weight:600; margin-bottom:0.25rem; }
+.modal p { font-size:13px; color:var(--text-muted); margin-bottom:1.25rem; line-height:1.6; }
+.modal-field { margin-bottom:1rem; }
+.modal-field label { display:block; font-size:13px; font-weight:500; color:var(--text-muted); margin-bottom:5px; }
+.modal-field small { display:block; font-size:11px; color:var(--text-faint); margin-top:4px; }
+.modal-btns { display:flex; gap:8px; margin-top:1.25rem; }
+.btn-secondary { flex:1; height:40px; background:var(--surface2); color:var(--text-muted); border:1px solid var(--border-strong); border-radius:var(--radius-sm); font-family:'Sarabun',sans-serif; font-size:14px; cursor:pointer; }
+.btn-primary { flex:1; height:40px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); font-family:'Sarabun',sans-serif; font-size:14px; font-weight:500; cursor:pointer; }
+
+/* Weight section */
+.weight-bar { background:var(--surface); border-bottom:1px solid var(--border); padding:0.75rem 1.5rem; }
+.weight-row { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.weight-left { display:flex; align-items:center; gap:10px; flex:1; min-width:0; }
+.weight-icon { font-size:20px; flex-shrink:0; }
+.weight-label { font-size:13px; font-weight:500; color:var(--text); }
+.weight-est { font-size:11px; color:var(--text-faint); margin-top:1px; min-height:14px; }
+.weight-input-wrap { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.weight-input-wrap input { width:80px; height:36px; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:500; }
+.weight-unit { font-size:13px; color:var(--text-muted); }
+.weight-delta-row { display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+.weight-delta-label { font-size:12px; color:var(--text-faint); }
+.weight-delta-val { font-size:13px; font-weight:500; font-family:'IBM Plex Mono',monospace; }
+.weight-delta-val.gain { color:var(--red); }
+.weight-delta-val.loss { color:var(--green); }
+.weight-delta-val.neutral { color:var(--text-faint); }
+
+/* Weight chart in history */
+.weight-chart-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1rem; margin-bottom:1rem; }
+
+.bottom-nav { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--border); display:flex; max-width:600px; margin:0 auto; }
+@media (min-width:600px) { .bottom-nav { left:50%; transform:translateX(-50%); width:600px; border-left:1px solid var(--border); border-right:1px solid var(--border); } }
+.nav-btn { flex:1; padding:0.65rem 0 0.75rem; border:none; background:none; font-family:'Sarabun',sans-serif; font-size:11px; color:var(--text-faint); cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; }
+.nav-btn svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+.nav-btn.active { color:var(--accent); }
+/* iOS safe area */
+.app-shell { padding-bottom: calc(6rem + env(safe-area-inset-bottom)); }
+.bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+<div class="header">
+  <div class="header-top">
+    <span class="app-name">Calorie Tracker</span>
+  </div>
+  <div class="date-nav">
+    <button class="date-btn" onclick="changeDate(-1)">&#8592;</button>
+    <span class="date-display" onclick="openDatePicker()" id="date-display">–</span>
+    <button class="date-btn" onclick="changeDate(1)">&#8594;</button>
+  </div>
+  <input type="date" id="date-picker-hidden" onchange="onDatePickerChange(this.value)" />
+</div>
+
+<div class="summary">
+  <div class="summary-card">
+    <span class="summary-label">กินเข้าไป</span>
+    <span class="summary-value" id="s-in">0</span>
+    <span class="summary-unit">kcal</span>
+  </div>
+  <div class="summary-card">
+    <span class="summary-label">เผาผลาญ</span>
+    <span class="summary-value" id="s-out">0</span>
+    <span class="summary-unit">kcal</span>
+  </div>
+  <div class="summary-card" id="s-balance-card">
+    <span class="summary-label">ส่วนต่าง</span>
+    <span class="summary-value" id="s-balance">0</span>
+    <span class="balance-tag" id="s-tag">–</span>
+  </div>
+</div>
+
+<!-- Goals progress bar -->
+<div class="goals-bar">
+  <div class="goals-header">
+    <span class="goals-title">เป้าหมายรายวัน</span>
+    <button class="goals-edit-btn" onclick="openGoalModal()">✏️ แก้ไขเป้าหมาย</button>
+  </div>
+  <div class="goals-grid">
+    <div class="goal-item">
+      <div class="goal-item-top">
+        <span class="goal-item-label">🍜 แคลลอรี่ที่กิน</span>
+        <span class="goal-item-nums" id="g-food-nums">0 / –</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill food-fill" id="g-food-bar" style="width:0%"></div></div>
+    </div>
+    <div class="goal-item">
+      <div class="goal-item-top">
+        <span class="goal-item-label">🏃 แคลลอรี่ที่เผา</span>
+        <span class="goal-item-nums" id="g-ex-nums">0 / –</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill ex-fill" id="g-ex-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Weight bar -->
+<div class="weight-bar" id="weight-bar">
+  <div class="weight-row">
+    <div class="weight-left">
+      <span class="weight-icon">⚖️</span>
+      <div>
+        <div class="weight-label">น้ำหนักวันนี้</div>
+        <div class="weight-est" id="weight-est-text"></div>
+      </div>
+    </div>
+    <div class="weight-input-wrap">
+      <input type="number" id="weight-input" placeholder="–" step="0.1" min="20" max="300" />
+      <span class="weight-unit">กก.</span>
+    </div>
+  </div>
+  <div class="weight-delta-row" id="weight-delta-row" style="display:none">
+    <span class="weight-delta-label">ผลต่อน้ำหนักจากวันนี้</span>
+    <span class="weight-delta-val" id="weight-delta-val"></span>
+  </div>
+</div>
+
+<!-- Day result banner -->
+<div class="day-result hidden" id="day-result">
+  <div class="day-result-icon" id="day-result-icon"></div>
+  <div class="day-result-text">
+    <div class="day-result-title" id="day-result-title"></div>
+    <div class="day-result-sub" id="day-result-sub"></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" id="tab-food" onclick="switchTab('food')">🍜 อาหาร</button>
+  <button class="tab-btn" id="tab-exercise" onclick="switchTab('exercise')">🏃 ออกกำลังกาย</button>
+  <button class="tab-btn" id="tab-history" onclick="switchTab('history')">📊 สถิติ</button>
+</div>
+
+<!-- Panel: Food -->
+<div class="panel active" id="panel-food">
+  <div class="add-form">
+    <div class="form-title">เพิ่มรายการอาหาร</div>
+    <div class="ai-row">
+      <div class="ai-input-wrap">
+        <input type="text" id="food-name" placeholder="พิมพ์ชื่ออาหาร เช่น ข้าวผัดหมู 1 จาน" autocomplete="off" />
+      </div>
+      <button class="ai-lookup-btn" id="food-ai-btn" onclick="lookupFood()">🤖 ประเมิน</button>
+    </div>
+    <div class="ai-loading" id="food-loading"><div class="spinner"></div>AI กำลังประเมินแคลลอรี่...</div>
+    <div class="ai-result-card" id="food-result">
+      <div class="ai-result-name" id="food-result-name"></div>
+      <div><span class="ai-result-kcal" id="food-result-kcal"></span><span class="ai-result-unit">kcal</span></div>
+      <div class="ai-result-note" id="food-result-note"></div>
+      <button class="ai-use-btn" onclick="useFood()">✓ ใช้ค่านี้</button>
+    </div>
+    <div class="kcal-row">
+      <div class="field-wrap">
+        <label>แคลลอรี่ (kcal) — แก้ไขได้</label>
+        <input type="number" id="food-kcal" placeholder="0" min="1" />
+      </div>
+    </div>
+    <button class="add-btn" onclick="addFood()">+ บันทึกอาหาร</button>
+  </div>
+  <div class="log-section-title">รายการวันนี้</div>
+  <div class="log-list" id="food-list"><div class="log-empty">ยังไม่มีรายการอาหาร</div></div>
+</div>
+
+<!-- Panel: Exercise -->
+<div class="panel" id="panel-exercise">
+  <div class="add-form">
+    <div class="form-title">เพิ่มการออกกำลังกาย / กิจกรรม</div>
+    <div class="ai-row">
+      <div class="ai-input-wrap">
+        <input type="text" id="ex-name" placeholder="เช่น วิ่ง 30 นาที, ว่ายน้ำ 1 ชั่วโมง" autocomplete="off" />
+      </div>
+      <button class="ai-lookup-btn" id="ex-ai-btn" onclick="lookupExercise()">🤖 ประเมิน</button>
+    </div>
+    <div class="ai-loading" id="ex-loading"><div class="spinner"></div>AI กำลังประเมินแคลลอรี่...</div>
+    <div class="ai-result-card" id="ex-result">
+      <div class="ai-result-name" id="ex-result-name"></div>
+      <div><span class="ai-result-kcal" id="ex-result-kcal"></span><span class="ai-result-unit">kcal</span></div>
+      <div class="ai-result-note" id="ex-result-note"></div>
+      <button class="ai-use-btn" onclick="useExercise()">✓ ใช้ค่านี้</button>
+    </div>
+    <div class="kcal-row">
+      <div class="field-wrap">
+        <label>แคลลอรี่ที่เผาผลาญ (kcal) — แก้ไขได้</label>
+        <input type="number" id="ex-kcal" placeholder="0" min="1" />
+      </div>
+    </div>
+    <button class="add-btn" onclick="addExercise()">+ บันทึกกิจกรรม</button>
+  </div>
+  <div class="log-section-title">กิจกรรมวันนี้</div>
+  <div class="log-list" id="ex-list"><div class="log-empty">ยังไม่มีรายการกิจกรรม</div></div>
+</div>
+
+<!-- Panel: History -->
+<div class="panel" id="panel-history">
+  <div class="stat-grid" id="overall-stats"></div>
+  <div class="weight-chart-wrap">
+    <div class="chart-title">กราฟน้ำหนัก 30 วัน</div>
+    <div style="position:relative;width:100%;height:180px;">
+      <canvas id="weightChart" role="img" aria-label="กราฟน้ำหนักย้อนหลัง 30 วัน"></canvas>
+    </div>
+    <div id="weight-chart-empty" style="text-align:center;font-size:13px;color:var(--text-faint);padding:0.5rem 0 0;">บันทึกน้ำหนักอย่างน้อย 2 วันเพื่อดูกราฟ</div>
+  </div>
+  <div class="history-chart-wrap">
+    <div class="chart-title">กราฟย้อนหลัง 14 วัน</div>
+    <div class="chart-legend">
+      <span><span class="legend-dot" style="background:#52a87a"></span>กินเข้าไป</span>
+      <span><span class="legend-dot" style="background:#e07b8a"></span>เผาผลาญ</span>
+    </div>
+    <div style="position:relative;width:100%;height:200px;">
+      <canvas id="historyChart" role="img" aria-label="กราฟแคลลอรี่ย้อนหลัง 14 วัน"></canvas>
+    </div>
+  </div>
+  <div class="log-section-title">บันทึกรายวัน</div>
+  <div class="history-items" id="history-list"><div class="log-empty">ยังไม่มีข้อมูล</div></div>
+</div>
+
+</div><!-- app-shell -->
+
+<!-- Goal Modal — ต้องอยู่นอก app-shell -->
+<div class="modal-overlay hidden" id="goal-modal">
+  <div class="modal">
+    <h3>🎯 ตั้งเป้าหมายรายวัน</h3>
+    <p>ตั้งค่าครั้งเดียว ใช้ได้ทุกวัน แก้ไขได้ตลอดเวลา</p>
+    <div class="modal-field">
+      <label>เป้าหมายแคลลอรี่ที่กิน (kcal/วัน)</label>
+      <input type="number" id="goal-food-input" placeholder="เช่น 1800" min="500" max="5000" />
+      <small>แนะนำ: ผู้หญิง 1,600–2,000 · ผู้ชาย 2,000–2,500 kcal</small>
+    </div>
+    <div class="modal-field">
+      <label>เป้าหมายแคลลอรี่ที่ต้องเผาผลาญ (kcal/วัน)</label>
+      <input type="number" id="goal-ex-input" placeholder="เช่น 400" min="0" max="3000" />
+      <small>รวมทุกกิจกรรม เช่น เดิน วิ่ง ออกกำลังกาย</small>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="closeGoalModal()">ยกเลิก</button>
+      <button class="btn-primary" onclick="saveGoals()">บันทึกเป้าหมาย</button>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <button class="nav-btn active" id="nav-food" onclick="switchPanel('food')">
+    <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><path d="M8 12h8M12 8v8"/></svg>อาหาร
+  </button>
+  <button class="nav-btn" id="nav-exercise" onclick="switchPanel('exercise')">
+    <svg viewBox="0 0 24 24"><path d="M13 4v7l3 3M6.3 7.6l1.1 1.8M3 12h3m12 0h3m-5.3-4.4 1.1-1.8M12 20v-3"/><circle cx="12" cy="12" r="3"/></svg>ออกกำลังกาย
+  </button>
+  <button class="nav-btn" id="nav-history" onclick="switchPanel('history')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 17V12M12 17V8M16 17v-4"/></svg>สถิติ
+  </button>
+</div>
+
+<script>
+// ─── ฐานข้อมูลแคลลอรี่ (อาหารไทย + ทั่วไป) ───────────────────────
+const FOOD_DB = {
+  // ข้าวและก๋วยเตี๋ยว
+  "ข้าวสวย": {kcal:180, note:"ข้าวสวย 1 ทัพพี (100g)"},
+  "ข้าวผัด": {kcal:400, note:"ข้าวผัด 1 จาน (200g) เฉลี่ย"},
+  "ข้าวผัดหมู": {kcal:420, note:"ข้าวผัดหมู 1 จาน (200g)"},
+  "ข้าวผัดไก่": {kcal:390, note:"ข้าวผัดไก่ 1 จาน (200g)"},
+  "ข้าวผัดกุ้ง": {kcal:380, note:"ข้าวผัดกุ้ง 1 จาน (200g)"},
+  "ข้าวมันไก่": {kcal:500, note:"ข้าวมันไก่ 1 จาน พร้อมน้ำจิ้ม"},
+  "ข้าวหมูแดง": {kcal:480, note:"ข้าวหมูแดง 1 จาน"},
+  "ข้าวหมูกรอบ": {kcal:550, note:"ข้าวหมูกรอบ 1 จาน"},
+  "ข้าวกะเพรา": {kcal:450, note:"ข้าวกะเพราหมูสับ 1 จาน"},
+  "ข้าวกะเพราหมู": {kcal:450, note:"ข้าวกะเพราหมูสับ 1 จาน"},
+  "ข้าวกะเพราไก่": {kcal:420, note:"ข้าวกะเพราไก่สับ 1 จาน"},
+  "ข้าวกะเพราทะเล": {kcal:400, note:"ข้าวกะเพราทะเล 1 จาน"},
+  "ข้าวราดแกง": {kcal:480, note:"ข้าวราดแกง 1 จาน"},
+  "ข้าวต้ม": {kcal:150, note:"ข้าวต้ม 1 ชาม (300ml)"},
+  "โจ๊ก": {kcal:130, note:"โจ๊ก 1 ชาม ไม่มีท็อปปิ้ง"},
+  "ก๋วยเตี๋ยว": {kcal:300, note:"ก๋วยเตี๋ยว 1 ชาม เฉลี่ย"},
+  "ก๋วยเตี๋ยวหมู": {kcal:320, note:"ก๋วยเตี๋ยวหมู 1 ชาม"},
+  "ก๋วยเตี๋ยวไก่": {kcal:290, note:"ก๋วยเตี๋ยวไก่ 1 ชาม"},
+  "ก๋วยเตี๋ยวเรือ": {kcal:350, note:"ก๋วยเตี๋ยวเรือ 1 ชาม"},
+  "ผัดไทย": {kcal:500, note:"ผัดไทย 1 จาน (200g)"},
+  "ผัดซีอิ๊ว": {kcal:480, note:"ผัดซีอิ๊ว 1 จาน"},
+  "ราดหน้า": {kcal:460, note:"ราดหน้า 1 จาน"},
+  "บะหมี่": {kcal:350, note:"บะหมี่ 1 ชาม"},
+  "บะหมี่กึ่งสำเร็จรูป": {kcal:350, note:"บะหมี่กึ่งสำเร็จรูป 1 ซอง"},
+  "มาม่า": {kcal:350, note:"มาม่า 1 ซอง"},
+  "ข้าวเหนียว": {kcal:200, note:"ข้าวเหนียว 1 กำมือ (80g)"},
+  "ข้าวเหนียวหมูปิ้ง": {kcal:380, note:"ข้าวเหนียว+หมูปิ้ง 2 ไม้"},
+  "ข้าวซอย": {kcal:550, note:"ข้าวซอย 1 ชาม"},
+
+  // กับข้าว
+  "ต้มยำกุ้ง": {kcal:200, note:"ต้มยำกุ้ง 1 ชาม"},
+  "ต้มยำไก่": {kcal:180, note:"ต้มยำไก่ 1 ชาม"},
+  "ต้มข่าไก่": {kcal:280, note:"ต้มข่าไก่ 1 ชาม (ใส่กะทิ)"},
+  "แกงเขียวหวาน": {kcal:350, note:"แกงเขียวหวาน 1 ถ้วย"},
+  "แกงเผ็ด": {kcal:320, note:"แกงเผ็ด 1 ถ้วย"},
+  "แกงมัสมั่น": {kcal:400, note:"แกงมัสมั่น 1 ถ้วย"},
+  "แกงกะหรี่": {kcal:380, note:"แกงกะหรี่ 1 ถ้วย"},
+  "แกงจืด": {kcal:120, note:"แกงจืด 1 ชาม"},
+  "ผัดกะเพรา": {kcal:280, note:"ผัดกะเพรา 1 จาน (ไม่มีข้าว)"},
+  "ผัดผักบุ้ง": {kcal:120, note:"ผัดผักบุ้ง 1 จาน"},
+  "ผักบุ้งไฟแดง": {kcal:130, note:"ผักบุ้งไฟแดง 1 จาน"},
+  "ผัดบรอกโคลี": {kcal:150, note:"ผัดบรอกโคลี 1 จาน"},
+  "ไข่ดาว": {kcal:90, note:"ไข่ดาว 1 ฟอง"},
+  "ไข่เจียว": {kcal:180, note:"ไข่เจียว 1 ฟอง (ใส่น้ำมัน)"},
+  "ไข่ต้ม": {kcal:70, note:"ไข่ต้ม 1 ฟอง"},
+  "ไข่พะโล้": {kcal:150, note:"ไข่พะโล้ 1 ฟอง"},
+  "หมูทอด": {kcal:280, note:"หมูทอด 100g"},
+  "ไก่ทอด": {kcal:250, note:"ไก่ทอด 1 ชิ้น (80g)"},
+  "ไก่ย่าง": {kcal:180, note:"ไก่ย่าง 1 ชิ้น (80g)"},
+  "ปลาทอด": {kcal:220, note:"ปลาทอด 1 ชิ้น"},
+  "ปลานึ่ง": {kcal:150, note:"ปลานึ่ง 1 ชิ้น"},
+  "กุ้งทอด": {kcal:200, note:"กุ้งทอด 5 ตัว"},
+  "ลาบหมู": {kcal:250, note:"ลาบหมู 1 จาน"},
+  "น้ำพริก": {kcal:80, note:"น้ำพริก 2 ช้อนโต๊ะ"},
+  "ส้มตำ": {kcal:150, note:"ส้มตำ 1 จาน"},
+  "ส้มตำไทย": {kcal:160, note:"ส้มตำไทย 1 จาน"},
+  "ยำ": {kcal:200, note:"ยำ 1 จาน เฉลี่ย"},
+
+  // ของทอด/อาหารทานเล่น
+  "สปริงโรล": {kcal:100, note:"สปริงโรล 1 ชิ้น"},
+  "ปอเปี๊ยะทอด": {kcal:100, note:"ปอเปี๊ยะทอด 1 ชิ้น"},
+  "ทอดมัน": {kcal:120, note:"ทอดมัน 1 ชิ้น"},
+  "ลูกชิ้นทอด": {kcal:60, note:"ลูกชิ้นทอด 1 ชิ้น"},
+  "หมูปิ้ง": {kcal:100, note:"หมูปิ้ง 1 ไม้"},
+  "ไก่ปิ้ง": {kcal:120, note:"ไก่ปิ้ง 1 ชิ้น"},
+  "ซาลาเปา": {kcal:200, note:"ซาลาเปา 1 ลูก"},
+  "ขนมจีบ": {kcal:50, note:"ขนมจีบ 1 ชิ้น"},
+  "ติ่มซำ": {kcal:60, note:"ติ่มซำ 1 ชิ้น เฉลี่ย"},
+
+  // ฟาสต์ฟู้ด
+  "แมคโดนัลด์": {kcal:500, note:"เบอร์เกอร์+เฟรนช์ฟรายส์ เฉลี่ย"},
+  "เบอร์เกอร์": {kcal:450, note:"เบอร์เกอร์ 1 ชิ้น เฉลี่ย"},
+  "พิซซ่า": {kcal:300, note:"พิซซ่า 1 สไลซ์"},
+  "ฟรายด์ชิกเก้น": {kcal:250, note:"ไก่ทอด KFC 1 ชิ้น"},
+  "เฟรนช์ฟรายส์": {kcal:320, note:"เฟรนช์ฟรายส์ size M"},
+  "ชาบู": {kcal:400, note:"ชาบู 1 มื้อ เฉลี่ย"},
+  "สุกี้": {kcal:450, note:"สุกี้ 1 มื้อ เฉลี่ย"},
+  "บาร์บีคิว": {kcal:600, note:"บาร์บีคิวบุฟเฟต์ 1 มื้อ เฉลี่ย"},
+  "สเต็ก": {kcal:400, note:"สเต็กเนื้อ 150g"},
+  "แซนวิช": {kcal:320, note:"แซนวิช 1 ชิ้น"},
+  "ซูชิ": {kcal:50, note:"ซูชิ 1 คำ เฉลี่ย"},
+  "ราเมน": {kcal:500, note:"ราเมน 1 ชาม"},
+  "โซบะ": {kcal:350, note:"โซบะ 1 ชาม"},
+  "ข้าวญี่ปุ่น": {kcal:420, note:"ข้าวหน้าไก่/หน้าเนื้อ 1 จาน"},
+  "ข้าวหน้าไก่": {kcal:450, note:"ข้าวหน้าไก่ญี่ปุ่น 1 จาน"},
+  "ข้าวหน้าเนื้อ": {kcal:500, note:"ข้าวหน้าเนื้อญี่ปุ่น 1 จาน"},
+  "ข้าวปั้น": {kcal:170, note:"ข้าวปั้น (onigiri) 1 ลูก"},
+  "โอนิกิริ": {kcal:170, note:"โอนิกิริ 1 ลูก"},
+  "ต้มโพ๊ก": {kcal:300, note:"ต้มโพ๊กเกาหลี 1 ชาม"},
+  "บิบิมบับ": {kcal:450, note:"บิบิมบับ 1 จาน"},
+
+  // เครื่องดื่ม
+  "น้ำเปล่า": {kcal:0, note:"น้ำเปล่า 0 แคลลอรี่"},
+  "ชาเย็น": {kcal:200, note:"ชาเย็น 1 แก้ว (ใส่นม+น้ำตาล)"},
+  "ชาดำเย็น": {kcal:150, note:"ชาดำเย็น 1 แก้ว"},
+  "กาแฟเย็น": {kcal:150, note:"กาแฟเย็น 1 แก้ว"},
+  "กาแฟดำ": {kcal:5, note:"กาแฟดำ ไม่ใส่น้ำตาล"},
+  "ลาเต้": {kcal:190, note:"ลาเต้ 1 แก้ว (12oz)"},
+  "อเมริกาโน่": {kcal:15, note:"อเมริกาโน่ 1 แก้ว ไม่ใส่น้ำตาล"},
+  "โกโก้": {kcal:200, note:"โกโก้ 1 แก้ว"},
+  "นมสด": {kcal:150, note:"นมสด 1 กล่อง (200ml)"},
+  "น้ำส้ม": {kcal:110, note:"น้ำส้ม 1 แก้ว (200ml)"},
+  "น้ำมะพร้าว": {kcal:50, note:"น้ำมะพร้าวอ่อน 1 ลูก"},
+  "น้ำอัดลม": {kcal:140, note:"น้ำอัดลม 1 กระป๋อง (330ml)"},
+  "โค้ก": {kcal:140, note:"โค้ก 1 กระป๋อง (330ml)"},
+  "เบียร์": {kcal:150, note:"เบียร์ 1 กระป๋อง (330ml)"},
+  "ไวน์": {kcal:120, note:"ไวน์แดง/ขาว 1 แก้ว (150ml)"},
+  "สมูทตี้": {kcal:200, note:"สมูทตี้ผลไม้ 1 แก้ว เฉลี่ย"},
+  "นมเปรี้ยว": {kcal:140, note:"นมเปรี้ยว 1 ขวด (180ml)"},
+  "โยเกิร์ต": {kcal:100, note:"โยเกิร์ต 1 ถ้วย (100g)"},
+
+  // ผลไม้
+  "กล้วย": {kcal:90, note:"กล้วยหอม 1 ลูก"},
+  "กล้วยหอม": {kcal:90, note:"กล้วยหอม 1 ลูก"},
+  "แอปเปิ้ล": {kcal:80, note:"แอปเปิ้ล 1 ลูก (150g)"},
+  "ส้ม": {kcal:60, note:"ส้ม 1 ลูก (120g)"},
+  "มะม่วง": {kcal:130, note:"มะม่วงสุก 1 ลูก (200g)"},
+  "สับปะรด": {kcal:80, note:"สับปะรด 1 ถ้วย (165g)"},
+  "มังคุด": {kcal:70, note:"มังคุด 3 ลูก"},
+  "ทุเรียน": {kcal:350, note:"ทุเรียน 2 พู (100g)"},
+  "แตงโม": {kcal:50, note:"แตงโม 2 ชิ้น (200g)"},
+  "องุ่น": {kcal:70, note:"องุ่น 1 พวง (100g)"},
+  "สตรอว์เบอร์รี": {kcal:50, note:"สตรอว์เบอร์รี 10 ลูก (100g)"},
+  "ลำไย": {kcal:80, note:"ลำไย 10 ลูก"},
+  "ลิ้นจี่": {kcal:70, note:"ลิ้นจี่ 8 ลูก"},
+  "มะละกอ": {kcal:55, note:"มะละกอ 1 ชิ้น (100g)"},
+  "ฝรั่ง": {kcal:70, note:"ฝรั่ง 1 ลูก (100g)"},
+
+  // ขนม/ของว่าง
+  "ขนมปัง": {kcal:80, note:"ขนมปังแผ่น 1 แผ่น"},
+  "โดนัท": {kcal:300, note:"โดนัท 1 ชิ้น"},
+  "เค้ก": {kcal:350, note:"เค้ก 1 ชิ้น (100g)"},
+  "คุกกี้": {kcal:80, note:"คุกกี้ 1 ชิ้น"},
+  "ช็อกโกแลต": {kcal:170, note:"ช็อกโกแลต 1 แท่ง (30g)"},
+  "ไอศกรีม": {kcal:200, note:"ไอศกรีม 1 สกู๊ป (100g)"},
+  "วาฟเฟิล": {kcal:300, note:"วาฟเฟิล 1 ชิ้น"},
+  "ครัวซองต์": {kcal:230, note:"ครัวซองต์ 1 ชิ้น (60g)"},
+  "มัฟฟิน": {kcal:350, note:"มัฟฟิน 1 ชิ้น (100g)"},
+  "บราวนี่": {kcal:250, note:"บราวนี่ 1 ชิ้น (60g)"},
+  "มันอบ": {kcal:130, note:"มันเทศอบ 1 ลูก (100g)"},
+  "ถั่ว": {kcal:170, note:"ถั่วคั่ว 30g"},
+  "ป๊อปคอร์น": {kcal:100, note:"ป๊อปคอร์น 1 ถ้วย"},
+  "มันฝรั่งทอด": {kcal:150, note:"มันฝรั่งทอด 1 ซอง (30g)"},
+  "ข้าวโพดคั่ว": {kcal:100, note:"ข้าวโพดคั่ว 1 ถ้วย"},
+};
+
+const EXERCISE_DB = {
+  "วิ่ง": {kcal_per_min:8, note:"วิ่งปกติ ~8 kcal/นาที (65kg)"},
+  "วิ่งจ็อกกิ้ง": {kcal_per_min:6, note:"จ็อกกิ้ง ~6 kcal/นาที"},
+  "เดิน": {kcal_per_min:4, note:"เดินเร็ว ~4 kcal/นาที"},
+  "เดินเร็ว": {kcal_per_min:5, note:"เดินเร็ว ~5 kcal/นาที"},
+  "ว่ายน้ำ": {kcal_per_min:8, note:"ว่ายน้ำ ~8 kcal/นาที"},
+  "ปั่นจักรยาน": {kcal_per_min:7, note:"ปั่นจักรยาน ~7 kcal/นาที"},
+  "จักรยาน": {kcal_per_min:7, note:"ปั่นจักรยาน ~7 kcal/นาที"},
+  "ยกน้ำหนัก": {kcal_per_min:5, note:"ยกน้ำหนัก ~5 kcal/นาที"},
+  "เวทเทรนนิ่ง": {kcal_per_min:5, note:"เวทเทรนนิ่ง ~5 kcal/นาที"},
+  "โยคะ": {kcal_per_min:3, note:"โยคะ ~3 kcal/นาที"},
+  "แอโรบิก": {kcal_per_min:7, note:"แอโรบิก ~7 kcal/นาที"},
+  "เต้น": {kcal_per_min:6, note:"เต้น ~6 kcal/นาที"},
+  "เต้นแอโรบิก": {kcal_per_min:7, note:"เต้นแอโรบิก ~7 kcal/นาที"},
+  "ฟุตบอล": {kcal_per_min:8, note:"ฟุตบอล ~8 kcal/นาที"},
+  "บาสเกตบอล": {kcal_per_min:8, note:"บาสเกตบอล ~8 kcal/นาที"},
+  "แบดมินตัน": {kcal_per_min:6, note:"แบดมินตัน ~6 kcal/นาที"},
+  "เทนนิส": {kcal_per_min:7, note:"เทนนิส ~7 kcal/นาที"},
+  "มวย": {kcal_per_min:9, note:"มวย/ชกมวย ~9 kcal/นาที"},
+  "มวยไทย": {kcal_per_min:10, note:"มวยไทย ~10 kcal/นาที"},
+  "วิดพื้น": {kcal_per_min:7, note:"วิดพื้น ~7 kcal/นาที"},
+  "ซิทอัพ": {kcal_per_min:5, note:"ซิทอัพ ~5 kcal/นาที"},
+  "สควอท": {kcal_per_min:6, note:"สควอท ~6 kcal/นาที"},
+  "พิลาทิส": {kcal_per_min:4, note:"พิลาทิส ~4 kcal/นาที"},
+  "ว่ายน้ำ": {kcal_per_min:8, note:"ว่ายน้ำ ~8 kcal/นาที"},
+  "กระโดดเชือก": {kcal_per_min:10, note:"กระโดดเชือก ~10 kcal/นาที"},
+  "hiit": {kcal_per_min:12, note:"HIIT ~12 kcal/นาที"},
+  "เดินขึ้นบันได": {kcal_per_min:8, note:"เดินขึ้นบันได ~8 kcal/นาที"},
+  "ทำความสะอาด": {kcal_per_min:3, note:"ทำความสะอาดบ้าน ~3 kcal/นาที"},
+  "ทำสวน": {kcal_per_min:4, note:"ทำสวน ~4 kcal/นาที"},
+  "กอล์ฟ": {kcal_per_min:4, note:"กอล์ฟ ~4 kcal/นาที"},
+  "ปีนเขา": {kcal_per_min:9, note:"ปีนเขา/เดินป่า ~9 kcal/นาที"},
+  "เดินป่า": {kcal_per_min:7, note:"เดินป่า ~7 kcal/นาที"},
+  "เต้น zumba": {kcal_per_min:8, note:"ซุมบ้า ~8 kcal/นาที"},
+  "ซุมบ้า": {kcal_per_min:8, note:"ซุมบ้า ~8 kcal/นาที"},
+};
+
+// ─── ฟังก์ชันค้นหาจากฐานข้อมูล ───────────────────────────────────
+function findFood(query) {
+  const q = query.toLowerCase().trim();
+  // หาปริมาณที่ระบุ
+  const qtyMatch = q.match(/(\d+)\s*(จาน|ชาม|ลูก|ชิ้น|ฟอง|กล่อง|แก้ว|ถ้วย|ไม้|พู|กำมือ|ซอง|แผ่น|สกู๊ป)/);
+  const qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
+
+  // ค้นหาด้วย exact match ก่อน
+  for (const [key, val] of Object.entries(FOOD_DB)) {
+    if (q.includes(key.toLowerCase())) {
+      return { name: key, kcal: val.kcal * qty, note: qty > 1 ? `${key} x${qty} = ${val.kcal * qty} kcal` : val.note };
+    }
+  }
+  // fuzzy match
+  for (const [key, val] of Object.entries(FOOD_DB)) {
+    const words = key.toLowerCase().split('');
+    let matches = 0;
+    for (const w of key.toLowerCase().split('')) { if (q.includes(w)) matches++; }
+    if (matches / key.length > 0.7) {
+      return { name: key, kcal: val.kcal * qty, note: val.note };
+    }
+  }
+  return null;
+}
+
+function findExercise(query) {
+  const q = query.toLowerCase().trim();
+  // หาจำนวนนาที
+  const minMatch = q.match(/(\d+)\s*(นาที|min|minutes)/);
+  const hrMatch  = q.match(/(\d+)\s*(ชั่วโมง|ชม|hour|hr)/);
+  let minutes = 30; // default
+  if (minMatch) minutes = parseInt(minMatch[1]);
+  if (hrMatch)  minutes = parseInt(hrMatch[1]) * 60;
+
+  for (const [key, val] of Object.entries(EXERCISE_DB)) {
+    if (q.includes(key.toLowerCase())) {
+      const kcal = Math.round(val.kcal_per_min * minutes);
+      return { name: key, kcal, note: `${key} ${minutes} นาที × ${val.kcal_per_min} kcal/นาที = ${kcal} kcal` };
+    }
+  }
+  return null;
+}
+
+// ─── Lookup handlers ──────────────────────────
+function lookupFood() {
+  const name = document.getElementById('food-name').value.trim();
+  if (!name) return;
+  const resultCard = document.getElementById('food-result');
+  resultCard.classList.remove('show');
+
+  const found = findFood(name);
+  if (found) {
+    document.getElementById('food-result-name').textContent = found.name;
+    document.getElementById('food-result-kcal').textContent = found.kcal.toLocaleString();
+    document.getElementById('food-result-note').textContent = found.note;
+    resultCard.classList.add('show');
+  } else {
+    // ประเมินจาก pattern ทั่วไป
+    const estimate = estimateGeneral(name, 'food');
+    document.getElementById('food-result-name').textContent = name;
+    document.getElementById('food-result-kcal').textContent = estimate.kcal.toLocaleString();
+    document.getElementById('food-result-note').textContent = estimate.note;
+    resultCard.classList.add('show');
+  }
+}
+
+function lookupExercise() {
+  const name = document.getElementById('ex-name').value.trim();
+  if (!name) return;
+  const resultCard = document.getElementById('ex-result');
+  resultCard.classList.remove('show');
+
+  const found = findExercise(name);
+  if (found) {
+    document.getElementById('ex-result-name').textContent = name;
+    document.getElementById('ex-result-kcal').textContent = found.kcal.toLocaleString();
+    document.getElementById('ex-result-note').textContent = found.note;
+    resultCard.classList.add('show');
+  } else {
+    const estimate = estimateGeneral(name, 'exercise');
+    document.getElementById('ex-result-name').textContent = name;
+    document.getElementById('ex-result-kcal').textContent = estimate.kcal.toLocaleString();
+    document.getElementById('ex-result-note').textContent = estimate.note;
+    resultCard.classList.add('show');
+  }
+}
+
+function estimateGeneral(name, type) {
+  if (type === 'food') {
+    const q = name.toLowerCase();
+    // ประเมินจากคำสำคัญ
+    if (q.includes('ทอด') || q.includes('กรอบ')) return { kcal: 350, note: 'ประมาณการ: อาหารทอด 1 จาน ~350 kcal' };
+    if (q.includes('ผัด')) return { kcal: 380, note: 'ประมาณการ: อาหารผัด 1 จาน ~380 kcal' };
+    if (q.includes('ต้ม') || q.includes('แกง')) return { kcal: 250, note: 'ประมาณการ: อาหารต้ม/แกง 1 ชาม ~250 kcal' };
+    if (q.includes('ข้าว')) return { kcal: 400, note: 'ประมาณการ: ข้าว 1 จาน ~400 kcal' };
+    if (q.includes('เส้น') || q.includes('ก๋วย') || q.includes('บะหมี่')) return { kcal: 350, note: 'ประมาณการ: อาหารเส้น 1 ชาม ~350 kcal' };
+    if (q.includes('สลัด') || q.includes('ผัก')) return { kcal: 120, note: 'ประมาณการ: สลัด/ผักสด 1 จาน ~120 kcal' };
+    if (q.includes('ขนม') || q.includes('เค้ก') || q.includes('คุกกี้')) return { kcal: 250, note: 'ประมาณการ: ขนม 1 ชิ้น ~250 kcal' };
+    if (q.includes('ผลไม้') || q.includes('ลูก')) return { kcal: 80, note: 'ประมาณการ: ผลไม้ ~80 kcal' };
+    return { kcal: 300, note: 'ประมาณการทั่วไป ~300 kcal — กรุณาตรวจสอบและแก้ไขตัวเลข' };
+  } else {
+    const q = name.toLowerCase();
+    const minMatch = q.match(/(\d+)\s*(นาที|min)/);
+    const hrMatch  = q.match(/(\d+)\s*(ชั่วโมง|ชม|hour)/);
+    let minutes = 30;
+    if (minMatch) minutes = parseInt(minMatch[1]);
+    if (hrMatch)  minutes = parseInt(hrMatch[1]) * 60;
+
+    let rate = 5;
+    if (q.includes('วิ่ง') || q.includes('ว่าย') || q.includes('มวย') || q.includes('กระโดด')) rate = 9;
+    else if (q.includes('ปั่น') || q.includes('เต้น') || q.includes('ฟุตบอล')) rate = 7;
+    else if (q.includes('เดิน') || q.includes('ยืด') || q.includes('โยคะ')) rate = 4;
+    const kcal = Math.round(rate * minutes);
+    return { kcal, note: `ประมาณการ: ${minutes} นาที × ${rate} kcal/นาที = ${kcal} kcal` };
+  }
+}
+
+function useFood() {
+  const kcal = document.getElementById('food-result-kcal').textContent.replace(/,/g,'');
+  document.getElementById('food-kcal').value = kcal;
+  document.getElementById('food-result').classList.remove('show');
+  document.getElementById('food-kcal').focus();
+}
+
+function useExercise() {
+  const kcal = document.getElementById('ex-result-kcal').textContent.replace(/,/g,'');
+  document.getElementById('ex-kcal').value = kcal;
+  document.getElementById('ex-result').classList.remove('show');
+  document.getElementById('ex-kcal').focus();
+}
+
+// ─── DB & Helpers ──────────────────────────────
+const DB_KEY = 'calTracker_v2';
+let db = {};
+let currentDate = todayStr();
+let histChart = null;
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function loadDB() { try { db = JSON.parse(localStorage.getItem(DB_KEY)||'{}'); } catch { db = {}; } }
+function saveDB() { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+function getDay(d) { if(!db[d]) db[d]={foods:[],exercises:[]}; return db[d]; }
+function formatDateThai(str) {
+  if(!str) return '';
+  const [y,m,d] = str.split('-').map(Number);
+  const months=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const days=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+  const dow = new Date(y,m-1,d).getDay();
+  const isToday = str===todayStr();
+  return `${isToday?'วันนี้ · ':''}วัน${days[dow]} ${d} ${months[m-1]} ${y+543}`;
+}
+function shiftDate(str,n) {
+  const d = new Date(str+'T00:00:00'); d.setDate(d.getDate()+n);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ─── Render ────────────────────────────────────
+function renderAll() {
+  document.getElementById('date-display').textContent = formatDateThai(currentDate);
+  const day = getDay(currentDate);
+  const totalIn = day.foods.reduce((s,f)=>s+f.kcal,0);
+  const totalOut = day.exercises.reduce((s,e)=>s+e.kcal,0);
+  const balance = totalIn - totalOut;
+  document.getElementById('s-in').textContent = totalIn.toLocaleString();
+  document.getElementById('s-out').textContent = totalOut.toLocaleString();
+  const balEl=document.getElementById('s-balance');
+  const tagEl=document.getElementById('s-tag');
+  const cardEl=document.getElementById('s-balance-card');
+  balEl.textContent=(balance>0?'+':'')+balance.toLocaleString();
+  cardEl.className='summary-card'+(balance>50?' balance-surplus':balance<-50?' balance-deficit':'');
+  if(balance>50){tagEl.textContent='เกิน';tagEl.className='balance-tag tag-surplus';}
+  else if(balance<-50){tagEl.textContent='ขาด';tagEl.className='balance-tag tag-deficit';}
+  else{tagEl.textContent='สมดุล';tagEl.className='balance-tag tag-balanced';}
+  renderFoods(); renderExercises(); renderGoals(); renderWeight();
+}
+
+function renderFoods() {
+  const el=document.getElementById('food-list');
+  const items=getDay(currentDate).foods;
+  if(!items.length){el.innerHTML='<div class="log-empty">ยังไม่มีรายการอาหาร</div>';return;}
+  el.innerHTML=items.map((f,i)=>`<div class="log-item"><span class="log-name">${escHtml(f.name)}</span><div class="log-right"><span class="log-kcal">${f.kcal.toLocaleString()} kcal</span><button class="del-btn" onclick="removeFood(${i})">✕</button></div></div>`).join('');
+}
+
+function renderExercises() {
+  const el=document.getElementById('ex-list');
+  const items=getDay(currentDate).exercises;
+  if(!items.length){el.innerHTML='<div class="log-empty">ยังไม่มีรายการกิจกรรม</div>';return;}
+  el.innerHTML=items.map((e,i)=>`<div class="log-item"><span class="log-name">${escHtml(e.name)}</span><div class="log-right"><span class="log-kcal" style="color:var(--green)">−${e.kcal.toLocaleString()} kcal</span><button class="del-btn" onclick="removeExercise(${i})">✕</button></div></div>`).join('');
+}
+
+function renderHistory() {
+  const allDays=Object.keys(db).sort().reverse();
+  let surplus=0,deficit=0;
+  allDays.forEach(k=>{const d=db[k];const b=d.foods.reduce((s,f)=>s+f.kcal,0)-d.exercises.reduce((s,e)=>s+e.kcal,0);if(b>50)surplus++;else if(b<-50)deficit++;});
+  document.getElementById('overall-stats').innerHTML=`
+    <div class="stat-box"><div class="stat-num">${allDays.length}</div><div class="stat-lbl">วันที่บันทึก</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--green)">${deficit}</div><div class="stat-lbl">วันแคลลอรี่ขาด</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--red)">${surplus}</div><div class="stat-lbl">วันแคลลอรี่เกิน</div></div>
+    <div class="stat-box"><div class="stat-num">${allDays.length-surplus-deficit}</div><div class="stat-lbl">วันสมดุล</div></div>`;
+
+  const chartKeys=Object.keys(db).sort().slice(-14);
+  const labels=chartKeys.map(k=>{const p=k.split('-');return `${+p[2]}/${+p[1]}`;});
+  const dataIn=chartKeys.map(k=>db[k].foods.reduce((s,f)=>s+f.kcal,0));
+  const dataOut=chartKeys.map(k=>db[k].exercises.reduce((s,e)=>s+e.kcal,0));
+  const dark=window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const tC=dark?'#9C9A94':'#6B6860', gC=dark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.04)';
+  if(histChart)histChart.destroy();
+  histChart=new Chart(document.getElementById('historyChart'),{type:'bar',data:{labels,datasets:[
+    {label:'กินเข้าไป',data:dataIn,backgroundColor:'rgba(82,168,122,0.75)',borderRadius:4},
+    {label:'เผาผลาญ',data:dataOut,backgroundColor:'rgba(224,123,138,0.75)',borderRadius:4}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} kcal`}}},
+    scales:{x:{ticks:{color:tC,font:{size:11}},grid:{display:false}},y:{ticks:{color:tC,font:{size:11},callback:v=>v.toLocaleString()},grid:{color:gC}}}}});
+
+  const listEl=document.getElementById('history-list');
+  if(!allDays.length){listEl.innerHTML='<div class="log-empty">ยังไม่มีข้อมูล</div>';return;}
+  const months=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const g = getGoals();
+  const wDB = loadWeightDB();
+  listEl.innerHTML=allDays.slice(0,60).map(k=>{
+    const d=db[k];const ti=d.foods.reduce((s,f)=>s+f.kcal,0);const to=d.exercises.reduce((s,e)=>s+e.kcal,0);const bal=ti-to;
+    const bc=bal>50?'badge-surplus':bal<-50?'badge-deficit':'badge-balanced';
+    const bt=bal>50?`+${bal.toLocaleString()} เกิน`:bal<-50?`${bal.toLocaleString()} ขาด`:'สมดุล';
+    const [y,m,day2]=k.split('-').map(Number);
+    let goalIcon = '';
+    if (g.food > 0 || g.exercise > 0) {
+      const foodOk = g.food === 0 || ti <= g.food;
+      const exOk   = g.exercise === 0 || to >= g.exercise;
+      goalIcon = (foodOk && exOk) ? ' 🎯' : (foodOk ? ' ✅' : ' ⚠️');
+    }
+    const wStr = wDB[k] ? ` · ⚖️ ${wDB[k]} กก.` : '';
+    return `<div class="history-row ${k===todayStr()?'today-row':''}" onclick="goToDate('${k}')">
+      <div><div class="history-date">${day2} ${months[m-1]} ${y+543}${k===todayStr()?' · วันนี้':''}${goalIcon}</div>
+      <div class="history-sub">กิน ${ti.toLocaleString()} · เผา ${to.toLocaleString()} kcal${wStr}</div></div>
+      <span class="badge ${bc}">${bt}</span></div>`;
+  }).join('');
+}
+
+// ─── Actions ──────────────────────────────────
+function addFood() {
+  const name=document.getElementById('food-name').value.trim();
+  const kcal=parseInt(document.getElementById('food-kcal').value);
+  if(!name||!kcal||kcal<=0){document.getElementById('food-kcal').style.borderColor='var(--red)';document.getElementById('food-kcal').focus();setTimeout(()=>document.getElementById('food-kcal').style.borderColor='',1200);return;}
+  getDay(currentDate).foods.push({name,kcal});saveDB();renderAll();
+  document.getElementById('food-name').value='';document.getElementById('food-kcal').value='';
+  document.getElementById('food-result').classList.remove('show');
+  document.getElementById('food-name').focus();
+}
+function addExercise() {
+  const name=document.getElementById('ex-name').value.trim();
+  const kcal=parseInt(document.getElementById('ex-kcal').value);
+  if(!name||!kcal||kcal<=0){document.getElementById('ex-kcal').style.borderColor='var(--red)';document.getElementById('ex-kcal').focus();setTimeout(()=>document.getElementById('ex-kcal').style.borderColor='',1200);return;}
+  getDay(currentDate).exercises.push({name,kcal});saveDB();renderAll();
+  document.getElementById('ex-name').value='';document.getElementById('ex-kcal').value='';
+  document.getElementById('ex-result').classList.remove('show');
+  document.getElementById('ex-name').focus();
+}
+function removeFood(i){getDay(currentDate).foods.splice(i,1);if(!db[currentDate].foods.length&&!db[currentDate].exercises.length)delete db[currentDate];saveDB();renderAll();}
+function removeExercise(i){getDay(currentDate).exercises.splice(i,1);if(!db[currentDate].foods.length&&!db[currentDate].exercises.length)delete db[currentDate];saveDB();renderAll();}
+function changeDate(n){currentDate=shiftDate(currentDate,n);renderAll();}
+function openDatePicker(){const dp=document.getElementById('date-picker-hidden');dp.value=currentDate;dp.showPicker?dp.showPicker():dp.click();}
+function onDatePickerChange(val){if(val){currentDate=val;renderAll();}}
+function goToDate(d){currentDate=d;renderAll();switchPanel('food');}
+// ─── Goals ────────────────────────────────────
+const GOALS_KEY = 'calTracker_goals';
+
+function loadGoals() {
+  try { return JSON.parse(localStorage.getItem(GOALS_KEY) || '{}'); } catch { return {}; }
+}
+function saveGoalsData(g) { localStorage.setItem(GOALS_KEY, JSON.stringify(g)); }
+function getGoals() { return loadGoals(); }
+
+function openGoalModal() {
+  const g = getGoals();
+  document.getElementById('goal-food-input').value = g.food || '';
+  document.getElementById('goal-ex-input').value = g.exercise || '';
+  document.getElementById('goal-modal').classList.remove('hidden');
+  document.getElementById('goal-food-input').focus();
+}
+function closeGoalModal() { document.getElementById('goal-modal').classList.add('hidden'); }
+function saveGoals() {
+  const food = parseInt(document.getElementById('goal-food-input').value) || 0;
+  const exercise = parseInt(document.getElementById('goal-ex-input').value) || 0;
+  saveGoalsData({ food, exercise });
+  closeGoalModal();
+  renderAll();
+}
+
+function renderGoals() {
+  const g = getGoals();
+  const day = getDay(currentDate);
+  const totalIn = day.foods.reduce((s,f)=>s+f.kcal, 0);
+  const totalOut = day.exercises.reduce((s,e)=>s+e.kcal, 0);
+  const gFood = g.food || 0;
+  const gEx = g.exercise || 0;
+
+  // Food bar
+  const foodPct = gFood > 0 ? Math.min((totalIn / gFood) * 100, 100) : 0;
+  const foodOver = gFood > 0 && totalIn > gFood;
+  document.getElementById('g-food-nums').textContent = gFood > 0
+    ? `${totalIn.toLocaleString()} / ${gFood.toLocaleString()}`
+    : `${totalIn.toLocaleString()} / ไม่ได้ตั้ง`;
+  const foodBar = document.getElementById('g-food-bar');
+  foodBar.style.width = foodPct + '%';
+  foodBar.className = 'progress-fill food-fill' + (foodOver ? ' over' : '');
+
+  // Exercise bar
+  const exPct = gEx > 0 ? Math.min((totalOut / gEx) * 100, 100) : 0;
+  document.getElementById('g-ex-nums').textContent = gEx > 0
+    ? `${totalOut.toLocaleString()} / ${gEx.toLocaleString()}`
+    : `${totalOut.toLocaleString()} / ไม่ได้ตั้ง`;
+  document.getElementById('g-ex-bar').style.width = exPct + '%';
+
+  // Banner
+  const banner = document.getElementById('day-result');
+  const hasGoals = gFood > 0 || gEx > 0;
+  const hasData  = totalIn > 0 || totalOut > 0;
+
+  if (!hasGoals || !hasData) { banner.className = 'day-result hidden'; return; }
+
+  const foodOk   = gFood === 0 || totalIn <= gFood;
+  const exOk     = gEx === 0   || totalOut >= gEx;
+  const foodDone = gFood > 0 && totalIn > 0;
+  const exDone   = gEx > 0   && totalOut > 0;
+
+  let icon, title, sub, type;
+
+  if (foodOk && exOk && foodDone && exDone) {
+    icon = '🎉'; type = 'success';
+    title = 'ทำได้ครบเป้าหมายทั้งหมด!';
+    sub = `กิน ${totalIn.toLocaleString()} / ${gFood.toLocaleString()} kcal · เผา ${totalOut.toLocaleString()} / ${gEx.toLocaleString()} kcal`;
+  } else if (!foodOk) {
+    icon = '⚠️'; type = 'warning';
+    title = `กินเกินเป้าหมาย +${(totalIn-gFood).toLocaleString()} kcal`;
+    sub = `กิน ${totalIn.toLocaleString()} kcal เป้า ${gFood.toLocaleString()} kcal`
+        + (gEx > 0 ? ` · เผา ${totalOut.toLocaleString()} / ${gEx.toLocaleString()} kcal` : '');
+  } else if (foodOk && foodDone && gEx > 0 && totalOut === 0) {
+    icon = '🏃'; type = 'neutral';
+    title = 'ยังไม่ได้บันทึกการออกกำลังกาย';
+    sub = `เป้าเผาผลาญ ${gEx.toLocaleString()} kcal · กิน ${totalIn.toLocaleString()} / ${gFood.toLocaleString()} kcal ✓`;
+  } else if (exDone && !exOk) {
+    icon = '💪'; type = 'neutral';
+    title = `เผาผลาญยังไม่ถึงเป้า เหลืออีก ${(gEx-totalOut).toLocaleString()} kcal`;
+    sub = `เผาไปแล้ว ${totalOut.toLocaleString()} / ${gEx.toLocaleString()} kcal`
+        + (gFood > 0 ? ` · กิน ${totalIn.toLocaleString()} / ${gFood.toLocaleString()} kcal ✓` : '');
+  } else if (foodOk && foodDone && (gEx === 0 || exOk)) {
+    icon = '✅'; type = 'success';
+    title = 'แคลลอรี่อยู่ในเป้าหมาย!';
+    sub = `กิน ${totalIn.toLocaleString()} / ${gFood.toLocaleString()} kcal`
+        + (gEx > 0 ? ` · เผา ${totalOut.toLocaleString()} / ${gEx.toLocaleString()} kcal` : '');
+  } else {
+    icon = '📝'; type = 'neutral';
+    title = 'กำลังบันทึกข้อมูลวันนี้';
+    sub = (gFood > 0 ? `กิน ${totalIn.toLocaleString()} / ${gFood.toLocaleString()} kcal` : '')
+        + (gEx > 0 ? ` · เผา ${totalOut.toLocaleString()} / ${gEx.toLocaleString()} kcal` : '');
+  }
+
+  document.getElementById('day-result-icon').textContent = icon;
+  document.getElementById('day-result-title').textContent = title;
+  document.getElementById('day-result-sub').textContent = sub;
+  banner.className = `day-result ${type}`;
+}
+
+// ─── Weight ────────────────────────────────────
+const WEIGHT_KEY = 'calTracker_weight';
+let weightChart = null;
+
+function loadWeightDB() {
+  try { return JSON.parse(localStorage.getItem(WEIGHT_KEY) || '{}'); } catch { return {}; }
+}
+function saveWeightDB(w) { localStorage.setItem(WEIGHT_KEY, JSON.stringify(w)); }
+
+function renderWeight() {
+  const wDB = loadWeightDB();
+  const saved = wDB[currentDate] || null;
+  const wInput = document.getElementById('weight-input');
+  if (document.activeElement !== wInput) wInput.value = saved || '';
+
+  const day = getDay(currentDate);
+  const totalIn  = day.foods.reduce((s,f)=>s+f.kcal, 0);
+  const totalOut = day.exercises.reduce((s,e)=>s+e.kcal, 0);
+  const netKcal  = totalIn - totalOut;
+  const deltaKg  = netKcal / 7700;
+  const deltaRow = document.getElementById('weight-delta-row');
+  const deltaVal = document.getElementById('weight-delta-val');
+  const estText  = document.getElementById('weight-est-text');
+
+  if (saved) {
+    const projected = (saved + deltaKg).toFixed(2);
+    estText.textContent = `บันทึกไว้ ${saved} กก.`;
+    if (totalIn > 0 || totalOut > 0) {
+      deltaRow.style.display = 'flex';
+      const sign = deltaKg >= 0 ? '+' : '';
+      const gStr = (Math.abs(deltaKg) * 1000).toFixed(0);
+      const cls  = deltaKg > 0.02 ? 'gain' : deltaKg < -0.02 ? 'loss' : 'neutral';
+      deltaVal.textContent = `${sign}${(deltaKg).toFixed(3)} กก. (${sign}${deltaKg>=0?'':'-'}${gStr} g) → คาดว่าพรุ่งนี้ ${projected} กก.`;
+      deltaVal.className = `weight-delta-val ${cls}`;
+    } else { deltaRow.style.display = 'none'; }
+  } else {
+    estText.textContent = 'กรอกน้ำหนักแล้วกด Enter เพื่อบันทึก';
+    if ((totalIn > 0 || totalOut > 0) && netKcal !== 0) {
+      deltaRow.style.display = 'flex';
+      const sign = deltaKg >= 0 ? '+' : '';
+      const gStr = (Math.abs(deltaKg) * 1000).toFixed(0);
+      const cls  = deltaKg > 0.02 ? 'gain' : deltaKg < -0.02 ? 'loss' : 'neutral';
+      deltaVal.textContent = `แคลลอรี่วันนี้ ${sign}${netKcal.toLocaleString()} kcal ≈ ${sign}${(deltaKg).toFixed(3)} กก. (${sign}${gStr} g)`;
+      deltaVal.className = `weight-delta-val ${cls}`;
+    } else { deltaRow.style.display = 'none'; }
+  }
+}
+
+function saveWeightInput() {
+  const raw = parseFloat(document.getElementById('weight-input').value);
+  const wDB = loadWeightDB();
+  if (!isNaN(raw) && raw > 0) {
+    wDB[currentDate] = raw;
+    saveWeightDB(wDB);
+  } else if (document.getElementById('weight-input').value === '') {
+    delete wDB[currentDate];
+    saveWeightDB(wDB);
+  }
+  renderWeight();
+}
+
+function renderWeightChart() {
+  const wDB  = loadWeightDB();
+  const keys = Object.keys(wDB).sort().slice(-30);
+  const emptyEl = document.getElementById('weight-chart-empty');
+  const canvas  = document.getElementById('weightChart');
+
+  if (keys.length < 2) {
+    canvas.style.display = 'none';
+    emptyEl.style.display = 'block';
+    if (weightChart) { weightChart.destroy(); weightChart = null; }
+    return;
+  }
+  canvas.style.display = 'block';
+  emptyEl.style.display = 'none';
+
+  const labels = keys.map(k => { const p=k.split('-'); return `${+p[2]}/${+p[1]}`; });
+  const data   = keys.map(k => wDB[k]);
+  const dark   = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const tC = dark ? '#9C9A94' : '#6B6860';
+  const gC = dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
+  const pad = 1;
+  const minW = Math.min(...data) - pad;
+  const maxW = Math.max(...data) + pad;
+
+  if (weightChart) weightChart.destroy();
+  weightChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'น้ำหนัก',
+        data,
+        borderColor: '#3266ad',
+        backgroundColor: 'rgba(50,102,173,0.08)',
+        borderWidth: 2,
+        pointBackgroundColor: '#3266ad',
+        pointRadius: 3,
+        tension: 0.3,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{display:false}, tooltip:{callbacks:{label: ctx=>` ${ctx.parsed.y} กก.`}} },
+      scales: {
+        x: { ticks:{color:tC,font:{size:10}}, grid:{display:false} },
+        y: { min:minW, max:maxW, ticks:{color:tC,font:{size:10},callback:v=>v+' กก.'}, grid:{color:gC} }
+      }
+    }
+  });
+}
+
+function switchTab(tab){
+  ['food','exercise','history'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('active',t===tab);
+    document.getElementById('panel-'+t).classList.toggle('active',t===tab);
+  });
+  if(tab==='history'){renderHistory();renderWeightChart();}
+}
+function switchPanel(tab){
+  ['food','exercise','history'].forEach(t=>{
+    document.getElementById('panel-'+t).classList.toggle('active',t===tab);
+    document.getElementById('nav-'+t).classList.toggle('active',t===tab);
+    document.getElementById('tab-'+t).classList.toggle('active',t===tab);
+  });
+  if(tab==='history'){renderHistory();renderWeightChart();}
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('food-name').addEventListener('keydown', e=>{if(e.key==='Enter'){e.preventDefault();lookupFood();}});
+  document.getElementById('food-kcal').addEventListener('keydown', e=>{if(e.key==='Enter')addFood();});
+  document.getElementById('ex-name').addEventListener('keydown',  e=>{if(e.key==='Enter'){e.preventDefault();lookupExercise();}});
+  document.getElementById('ex-kcal').addEventListener('keydown',  e=>{if(e.key==='Enter')addExercise();});
+  document.getElementById('goal-modal').addEventListener('click', e=>{if(e.target===e.currentTarget)closeGoalModal();});
+  document.getElementById('goal-ex-input').addEventListener('keydown', e=>{if(e.key==='Enter')saveGoals();});
+
+  // Weight input: save on Enter or blur
+  const wInput = document.getElementById('weight-input');
+  wInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ wInput.blur(); saveWeightInput(); }});
+  wInput.addEventListener('blur', ()=>saveWeightInput());
+
+  loadDB();
+  renderAll();
+});
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(r => console.log('SW registered:', r.scope))
+      .catch(e => console.log('SW failed:', e));
+  });
+}
+</script>
+</body>
+</html>
